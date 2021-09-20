@@ -1,0 +1,93 @@
+<html lang="en">
+	<head>
+		<title>three.js webgl - FBX loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<script
+  src="https://code.jquery.com/jquery-3.6.0.min.js"
+  integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+  crossorigin="anonymous"></script>
+	<style type="text/css">
+	html, body {
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
+    .overshadow{
+    	position: absolute;
+    	width: 100vw;
+    	height: 100%;
+    	z-index: 1000;
+    	/*background: linear-gradient(#00dcff, #b1bbdaa6 45%);*/
+    	mix-blend-mode: multiply;
+	}
+	.q{
+	    right: 1vh;
+	    position: absolute;
+	    top: 1vh;
+	    width: 10vh;
+	    height: 10vh;
+	    border-radius: 50%;
+	    box-shadow: 0 0 0.5vh black;
+	    background-image: url(assets/q.png);
+	    background-repeat: no-repeat;
+	    background-position: center;
+	    background-size: 150% auto;
+	    z-index: 10000
+	}
+	.walk{
+	    width: 40vh;
+	    position: fixed;
+	    background-color: #fd7272;
+	    padding: 1vh;
+	    right: 0;
+	    margin: 1vh;
+	    display: none;
+	}
+	.q:hover + .walk{
+		display: block;
+	}
+		</style>
+		</head>
+
+		<body>
+	<script type="x-shader/x-vertex" id="vs-matcap">
+
+	  varying vec2 vN;
+
+	  void main() {
+
+	    vec3 e = normalize( vec3( modelViewMatrix * vec4( position, 1.0 ) ) );
+	    vec3 n = normalize( normalMatrix * normal );
+
+	    vec3 r = reflect( e, n );
+	    float m = 2. * sqrt( pow( r.x, 2. ) + pow( r.y, 2. ) + pow( r.z + 1., 2. ) );
+	    vN = r.xy / m + .5;
+
+	    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1. );
+
+	  }
+
+	</script>
+
+	<script type="x-shader/x-vertex" id="fs-matcap">
+	  
+	  uniform sampler2D tMatCap;
+
+	  varying vec2 vN;
+
+	  void main() {
+	    
+	    vec3 base = texture2D( tMatCap, vN ).rgb;
+	    gl_FragColor = vec4( base, 0.44 );
+
+	  }
+	  
+	</script>
+
+	<script type="module" src="js/script.js"></script>
+	<div class="q"></div>
+	<img src="assets/walk.gif" class="walk">
+</body>
+</html>
