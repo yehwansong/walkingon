@@ -80,18 +80,18 @@
             }
             function easing_ani(counter,prev_z,newnew_z,prev_x,newnew_x,prev_light_y,newnew_y){
                 counter++
-                if(counter<20){
-                    camera.position.x = map_range(counter,0,20,prev_x,newnew_x)
-                    camera.position.z = map_range(counter,0,20,prev_z,newnew_z)
-                    current_x = map_range(counter,0,20,prev_x,newnew_x)
-                    current_z = map_range(counter,0,20,prev_z,newnew_z)
+                if(counter<200){
+                    camera.position.x = map_range(counter,0,200,prev_x,newnew_x)
+                    camera.position.z = map_range(counter,0,200,prev_z,newnew_z)
+                    current_x = map_range(counter,0,200,prev_x,newnew_x)
+                    current_z = map_range(counter,0,200,prev_z,newnew_z)
                 }else{
                     current_z = pressed_char_z*5+115
                     current_x = (pressed_char_x*3) - (46*1.5)
                 }
-                if(counter<60){
-                    light_group.rotation.y= map_range(counter,0,60,prev_light_y,newnew_y)
-                    current_light_y = map_range(counter,0,60,prev_light_y,newnew_y)
+                if(counter<300){
+                    light_group.rotation.y= map_range(counter,0,300,prev_light_y,newnew_y)
+                    current_light_y = map_range(counter,0,300,prev_light_y,newnew_y)
                     timeout = setTimeout(function(){
                         easing_ani(counter,prev_z,newnew_z,prev_x,newnew_x,prev_light_y,newnew_y)
                     })
