@@ -13,10 +13,17 @@
             var stone_group = new THREE.Group()
             var extra_group = new THREE.Group()
             var light_group = new THREE.Group()
+            var line_group = new THREE.Group()
             var pressed = false 
-            var current_z,current_x
+            var current_z,current_x,current_light_y
             var counter = 0
             var timeout 
+            var new_step_x = 0
+            var prev_step_x = 0
+            var sum_step_x = 0
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+            var key_texture_array = Array(10)
                 var obj_name_list = [
                     '1.obj',
                     '2.obj',
@@ -45,9 +52,12 @@
                 animate();
 
 
-
+            function paddy(num, padlen, padchar) {
+                var pad_char = typeof padchar !== 'undefined' ? padchar : '0';
+                var pad = new Array(1 + padlen).join(pad_char);
+                return (pad + num).slice(-pad.length);
+            }
             function animate() {
-                console.log('ehy0')
                 
                 if(pressed){
                     clearTimeout(timeout)
@@ -55,11 +65,11 @@
                                     current_z,
                                     pressed_char_z*5+115,
                                     current_x,
-                                    (pressed_char_x*3) - (46*1.5)
+                                    (pressed_char_x*3) - (46*1.5),
+                                    current_light_y,
+                                    degtorad(pressed_char_x*4 - (pressed_char_x*2))
                                 )
-                    light_group.rotation.y = degtorad(pressed_char_x*4 - (pressed_char_x*2))
                 }else{
-                    console.log('ehy')
                     camera.position.z = 115
                     camera.position.x = 100
                     current_z = 115
@@ -68,25 +78,27 @@
                 }
                 render()
             }
-            function easing_ani(counter,prev_z,newnew_z,prev_x,newnew_x){
+            function easing_ani(counter,prev_z,newnew_z,prev_x,newnew_x,prev_light_y,newnew_y){
                 counter++
                 if(counter<20){
                     camera.position.x = map_range(counter,0,20,prev_x,newnew_x)
                     camera.position.z = map_range(counter,0,20,prev_z,newnew_z)
                     current_x = map_range(counter,0,20,prev_x,newnew_x)
                     current_z = map_range(counter,0,20,prev_z,newnew_z)
-                    render()
-                    timeout = setTimeout(function(){
-                        easing_ani(counter,prev_z,newnew_z,prev_x,newnew_x)
-                    })
                 }else{
-                    // camera.position.z = newnew_z
-                    // camera.position.x = newnew_x
                     current_z = pressed_char_z*5+115
                     current_x = (pressed_char_x*3) - (46*1.5)
-                    render()
-                    
                 }
+                if(counter<60){
+                    light_group.rotation.y= map_range(counter,0,60,prev_light_y,newnew_y)
+                    current_light_y = map_range(counter,0,60,prev_light_y,newnew_y)
+                    timeout = setTimeout(function(){
+                        easing_ani(counter,prev_z,newnew_z,prev_x,newnew_x,prev_light_y,newnew_y)
+                    })
+                }else{
+                    current_light_y = degtorad(pressed_char_x*4 - (pressed_char_x*2))
+                }
+                render()
             }
             function easeInQuint(x){
                 return x*x*x*x;
@@ -106,6 +118,7 @@
                 // scene
                 scene = new THREE.Scene();
                 scene.add(camera_group)
+                scene.add(line_group)
                 
                 scene.background = new THREE.Color(0xffffff);
                 scene.fog = new THREE.FogExp2(0xff0000, 0.003);
@@ -130,13 +143,22 @@
                 plane.receiveShadow = true;
                 scene.add( plane );
 
+                const textureLoader = new THREE.TextureLoader();
          
-
+                for (var i = key_texture_array.length - 1; i >= 0; i--) {
+                    var texture = textureLoader.load('assets/key-'+paddy((i+1),2)+'.png');
+                        texture.repeat.set(1, 1);
+                        key_texture_array[i] = new THREE.MeshBasicMaterial({
+                        transparent: true,
+                        side: THREE.DoubleSide,
+                        // color:0xffffff,
+                        map:texture
+                    })
+                }
 
        
                 // matcap                
                 let goldMat;
-                const textureLoader = new THREE.TextureLoader();
                 var matcap = textureLoader.load('assets/9.jpg');
               
                 goldMat = new THREE.ShaderMaterial({
@@ -275,13 +297,10 @@
                                 load_obj(obj_list.length)
                             }else{
                     render() 
-                                // console.log(ob) 
                                 scene.add( obj_group );
                                 for (var j = 8; j >= 0; j--) {
                                     obj_list[j].position.x = j*10-(4*10)
                                 }
-                                console.log(obj_list)
-                                console.log(obj_line_list)
                                 // digitalcanon
                                 obj_list[0].position.y = 5
                                 obj_list[0].rotation.y = degtorad(135)
@@ -453,7 +472,6 @@
                                         extra_group.add( extra_list[extra_list.length-1] );
                                         extra_list.push(extra_list[4].clone())
                                         extra_group.add( extra_list[extra_list.length-1] );
-                                        console.log(extra_list.length)
                                         if(k == 0){
                                             for (var j = extra_list.length - 1; j >= 0; j--) {
                                                 extra_list[j].position.x = (Math.floor(Math.random() * 100)-50)
@@ -468,11 +486,25 @@
                         }
                     );
                 }
-                
-                load_stone(0)
-                function load_stone(i){
+                var stone_obj
+                var key_obj
+                load_stone_pre()
+                function load_stone_pre(){
                     loader.load( 'obj/stone.obj',
-                        function( obj ){
+                        function( obj_1 ){
+                            stone_obj = obj_1
+                            loader.load( 'obj/key.obj',
+                                function( obj_2 ){
+                                key_obj = obj_2
+                                load_stone(0)
+                                }
+                            )
+                        }
+                    )
+
+                }
+                function load_stone(i){
+                            var obj = stone_obj.clone()
                             var group = new THREE.Group()
                             stone_list.push(group)
                             group.add(obj)
@@ -493,24 +525,70 @@
                                 load_stone(0)
                             }else{
                                 scene.add( stone_group );
+                                console.log(stone_group)
                                 for (var i = Math.floor(stone_list.length/2) - 1; i >= 0; i--) {
                                     stone_list[i].children[0].position.x = 1*i
                                     stone_list[i].position.z = -50
                                     stone_list[i].position.x = -50
-                                    // stone_list[i].position.y = -1
+                                    stone_list[i].position.y = 0
                                     stone_list[i].rotation.y = degtorad(8*i)
+                                    console.log(((8*i)%360>240)&&((8*i)%360<300))
+                                        if(((8*i)%360>200) && ((8*i)%360<340) && i>Math.floor(stone_list.length/3.5) & Math.random()>0.2){
+                                        // console.log(key_obj.children[0].geometry)
+                                        stone_list[i].children[0].children[0].geometry = key_obj.children[0].geometry
+                                        const geometry = new THREE.PlaneGeometry( 2.5, 2.5 );
+                                        var ran = Math.floor(Math.random()*10)
+                                        const material = key_texture_array[ran]
+                                        const plane = new THREE.Mesh( geometry, material );
+                                        plane.rotation.x = degtorad(90)
+                                        plane.position.y = 1
+                                        stone_list[i].children[0].add(plane)
+                                        stone_list[i].children[0].children[0].material = blackMat
+                                        stone_list[i].children[0].children[0].updateMatrix()
+                                        stone_list[i].children[0].scale.set(1.2,1.2,1.2)
+                                        if(Math.random()>0.8){
+                                                            var x = -1*degtorad(Math.random()*30)
+                                                            var y = -1*degtorad(Math.random()*30)
+                                                            var z = -1*degtorad(Math.random()*30)
+                                                            stone_list[i].children[0].children[0].rotation.set(x,y,z)
+                                                            plane.rotation.set(90+x,y,z)
+                                                        }
+                                    }
                                 }
                                 for (var i = Math.floor(stone_list.length/2) - 1; i >= 0; i--) {
+                                    console.log(stone_list[i+Math.floor(stone_list.length/2)].parent)
                                     stone_list[i+Math.floor(stone_list.length/2)].children[0].position.x = 0.75*i
                                     stone_list[i+Math.floor(stone_list.length/2)].position.z = -50
                                     stone_list[i+Math.floor(stone_list.length/2)].position.x = 20
-                                    stone_list[i+Math.floor(stone_list.length/2)].position.y = -1
+                                    stone_list[i+Math.floor(stone_list.length/2)].position.y = 0
                                     stone_list[i+Math.floor(stone_list.length/2)].rotation.y = degtorad(8*i)
-                    render()
+                                    if(((8*i)%360>200) && ((8*i)%360<340) && i>Math.floor(stone_list.length/3.5) & Math.random()>0.2){
+                                        // console.log(key_obj.children[0].geometry)
+                                        const geometry = new THREE.PlaneGeometry( 2.5, 2.5 );
+                                        var ran = Math.floor(Math.random()*10)
+                                        const material = key_texture_array[ran]
+                                        const plane = new THREE.Mesh( geometry, material );
+                                        plane.rotation.x = degtorad(90)
+                                        plane.position.y = 1
+                                        stone_list[i+Math.floor(stone_list.length/2)].children[0].add(plane)
+                                        stone_list[i+Math.floor(stone_list.length/2)].children[0].children[0].geometry = key_obj.children[0].geometry
+                                        stone_list[i+Math.floor(stone_list.length/2)].children[0].children[0].material = blackMat
+                                        stone_list[i+Math.floor(stone_list.length/2)].children[0].children[0].updateMatrix()
+                                        stone_list[i+Math.floor(stone_list.length/2)].children[0].scale.set(1.2,1.2,1.2)
+                                        if(Math.random()>0.8){
+                                                            var x = -1*degtorad(Math.random()*30)
+                                                            var y = -1*degtorad(Math.random()*30)
+                                                            var z = -1*degtorad(Math.random()*30)
+                                                            stone_list[i+Math.floor(stone_list.length/2)].children[0].children[0].rotation.set(x,y,z)
+                                                            plane.rotation.set(90+x,y,z)
+                                                        }
+                                    }
+                                    render()
+                                }
+                                console.log((8*i)>0)
+                                for (var i = stone_list.length - 1; i >= 0; i--) {
                                 }
                             }
-                        }
-                    );
                 }
                 // light                
                     light = new THREE.DirectionalLight( 0xffffff );
@@ -581,7 +659,11 @@
                         [189,219,222],
                         [187,221,13],
                     ]
+                    const line_geometry = new THREE.PlaneBufferGeometry( 1, 300 );
+                    const line_material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
                 $(document).keydown(function(e) {
+
+
                     pressed = true
                     var code = e.keyCode || e.which;
                     for (var i = keypos_array.length - 1; i >= 0; i--) {
@@ -589,6 +671,42 @@
                             if(keypos_array[i][j] == code){
                             pressed_char_x = i*4 + j
                             pressed_char_z = j
+
+
+                            // grid
+                            const cube = new THREE.Mesh( line_geometry, line_material );
+                            line_group.add( cube );
+                            cube.position.x = (pressed_char_x*10) - (46*5)
+                            cube.position.z = -500
+                            cube.position.y = 100
+
+                            new_step_x = (pressed_char_x*10) - (46*5)
+                            sum_step_x = Math.floor(Math.abs(prev_step_x - new_step_x)/40*2.5) + sum_step_x
+
+                            if((prev_step_x - new_step_x)>0){
+                                $('.count_wrapper').append('<div class="count count_side_'+(i%2)+'_1 count'+($('.count_wrapper').find('.count').length)+'"> '+sum_step_x+' digits </div>')
+                            }else{
+                                $('.count_wrapper').append('<div class="count count_side_'+(i%2)+'_2 count'+($('.count_wrapper').find('.count').length)+'"> '+sum_step_x+' digits </div>')
+                            }
+
+
+                            setTimeout(function(){
+                                for (var i = line_group.children.length - 1; i >= 0; i--) {
+                                    $('.count'+i).css({'left':toScreenPosition(line_group.children[i], camera).x+'px'})
+                                    if(i==line_group.children.length - 2){
+                                        $('.count_dir').css({'width':(Math.abs((toScreenPosition(line_group.children[i+1], camera).x) - (toScreenPosition(line_group.children[i], camera).x)))+'px'})
+                                        $('.count_dir').css({'left':toScreenPosition(line_group.children[i+1], camera).x+'px'})
+                                        if(((toScreenPosition(line_group.children[i+1], camera).x) - (toScreenPosition(line_group.children[i], camera).x))<0){
+                                            $('.count_dir').css({'transform':'scaleX(1)'})   
+                                        }else{
+                                            $('.count_dir').css({'transform':'scaleX(-1)'})   
+                                        }
+                                    }
+                                }
+                                prev_step_x = (pressed_char_x*10) - (46*5)
+                            },300)
+// divElem.style.left = proj.x + 'px';
+// divElem.style.top = proj.y + 'px';
                             animate()
                             return false
 
@@ -596,3 +714,23 @@
                         }
                     }
                 });
+function toScreenPosition(obj, camera)
+{
+    var vector = new THREE.Vector3();
+
+    var widthHalf = 0.5*renderer.context.canvas.width;
+    var heightHalf = 0.5*renderer.context.canvas.height;
+
+    obj.updateMatrixWorld();
+    vector.setFromMatrixPosition(obj.matrixWorld);
+    vector.project(camera);
+
+    vector.x = ( vector.x * widthHalf ) + widthHalf;
+    vector.y = - ( vector.y * heightHalf ) + heightHalf;
+
+    return { 
+        x: vector.x,
+        y: vector.y
+    };
+
+};
